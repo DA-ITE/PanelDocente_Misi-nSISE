@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Misión SISE · Panel docente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Panel docente: fondo blanco, rojo SISE como acento, plomo claro de apoyo. Tabla de estudiantes con puertas 1–5. */
+:root{
+  --red:#FF0E49; --red-dark:#C70A3D; --ink:#231F20; --muted:#6B6B70; --line:#E4E4E7; --plomo:#F3F3F4; --white:#FFFFFF;
+  --ok:#17845E; --ok-bg:#E6F4EE; --key:#A86A00; --key-bg:#FFF3DC; --lock:#9A9AA0; --lock-bg:#F1F1F3;
+  --display:'Barlow Condensed','Arial Narrow',Arial,sans-serif; --body:Inter,'Segoe UI',Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--white);color:var(--ink);font-family:var(--body);font-size:14px}
+button,input,select{font:inherit}
+.hidden{display:none!important}
+svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* Acceso */
+.login{min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--plomo)}
+.login-card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:32px 28px;width:min(420px,100%);border-top:6px solid var(--red)}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand b{font-family:var(--display);font-size:34px;font-weight:800;letter-spacing:.02em}
+.brand b span{color:var(--red)}
+.brand small{font-size:11px;letter-spacing:.18em;color:var(--muted);font-weight:700;text-transform:uppercase}
+.login-card h1{font-family:var(--display);font-size:30px;margin:16px 0 6px;font-weight:700}
+.login-card p{color:var(--muted);margin:0 0 18px;line-height:1.5}
+label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+input,select{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--white);color:var(--ink)}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--red);outline-offset:1px}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--white);color:var(--ink);border-radius:10px;padding:9px 14px;font-weight:600;cursor:pointer}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--red);border-color:var(--red);color:var(--white)}
+.btn.primary:hover{background:var(--red-dark)}
+.err{color:var(--red-dark);font-size:13px;min-height:18px;margin:10px 0 0}
+
+/* Encabezado */
+header{border-bottom:1px solid var(--line);background:var(--white);position:sticky;top:0;z-index:5}
+.head-in{max-width:1400px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.head-in .brand b{font-size:28px}
+.who{color:var(--muted);font-size:13px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+main{max-width:1400px;margin:0 auto;padding:22px 24px 48px;display:grid;gap:20px}
+h2{font-family:var(--display);font-size:24px;font-weight:700;margin:0 0 4px}
+.sub{color:var(--muted);margin:0}
+.sync{font-size:12px;color:var(--muted)}
+
+/* Indicadores */
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.kpi{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--white)}
+.kpi span{font-size:12px;color:var(--muted);font-weight:600}
+.kpi b{display:block;font-family:var(--display);font-size:38px;font-weight:800;line-height:1.1;margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi small{color:var(--muted);font-size:12px}
+.kpi.accent b{color:var(--red)}
+
+/* Embudo de puertas */
+.funnel{border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;gap:10px}
+#funnel{display:grid;gap:12px}
+.frow{display:grid;grid-template-columns:170px minmax(0,1fr) 120px;gap:12px;align-items:center;font-size:13px}
+.frow b{font-weight:600}
+.track{height:12px;background:var(--plomo);border-radius:999px;overflow:hidden;position:relative}
+.track i{position:absolute;left:0;top:0;bottom:0;border-radius:999px}
+.track i.k{background:#F4B740}.track i.r{background:var(--ok)}
+.frow em{font-style:normal;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+/* Filtros y tabla */
+.filters{display:grid;grid-template-columns:200px 240px minmax(0,1fr);gap:12px;align-items:end}
+.table-wrap{border:1px solid var(--line);border-radius:14px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:980px}
+th{background:var(--ink);color:var(--white);font-size:12px;font-weight:600;text-align:left;padding:10px 12px;white-space:nowrap}
+td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:middle;font-size:13px}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:#FAFAFB}
+.stu b{display:block;font-weight:600}
+.stu small{color:var(--muted)}
+.doors{display:flex;gap:6px}
+.door{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-weight:700;font-size:12px;border:1px solid}
+.door.lock{background:var(--lock-bg);color:var(--lock);border-color:#E3E3E6}
+.door.key{background:var(--key-bg);color:var(--key);border-color:#F4D79A}
+.door.open{background:var(--ok-bg);color:var(--ok);border-color:#BFE3D2}
+.pill{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}.pill.no{background:var(--plomo);color:var(--muted)}
+.bar{height:6px;background:var(--plomo);border-radius:999px;overflow:hidden;width:90px;margin-top:4px}
+.bar i{display:block;height:100%;background:var(--red)}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+
+/* Detalle del estudiante */
+.drawer-back{position:fixed;inset:0;background:rgba(35,31,32,.35);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(460px,100%);background:var(--white);z-index:21;display:flex;flex-direction:column;border-left:1px solid var(--line)}
+.drawer-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px}
+.drawer-head h3{font-family:var(--display);font-size:24px;margin:0}
+.drawer-body{padding:18px 20px;overflow:auto;display:grid;gap:16px;align-content:start}
+.doorlist{display:grid;gap:8px}
+.doorline{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+.timeline{display:grid;gap:0}
+.ev{border-left:2px solid var(--line);padding:0 0 14px 14px;position:relative}
+.ev::before{content:"";position:absolute;left:-6px;top:3px;width:10px;height:10px;border-radius:50%;background:var(--red)}
+.ev b{display:block;font-size:13px}.ev small{color:var(--muted);font-size:12px}
+.ev p{margin:2px 0 0;color:var(--muted);font-size:12.5px}
+.iconbtn{border:1px solid var(--line);background:var(--white);border-radius:10px;width:36px;height:36px;display:grid;place-items:center;cursor:pointer}
+
+@media (max-width:1000px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.filters{grid-template-columns:1fr 1fr}.filters .search{grid-column:1/-1}.frow{grid-template-columns:120px minmax(0,1fr) 92px}}
+@media (max-width:560px){.kpis{grid-template-columns:1fr}.filters{grid-template-columns:1fr}main,.head-in{padding-left:16px;padding-right:16px}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+</svg>
+
+<section id="loginView" class="login">
+  <form id="loginForm" class="login-card">
+    <div class="brand"><b>SISE<span>»</span></b><small>Misión SISE · NOVA</small></div>
+    <h1>Panel docente</h1>
+    <p>Revisa qué estudiantes ingresaron al juego y qué puertas han desbloqueado.</p>
+    <label for="keyInput">Clave docente</label>
+    <input id="keyInput" type="password" autocomplete="off" required>
+    <p id="loginErr" class="err"></p>
+    <button class="btn primary" type="submit" style="width:100%;justify-content:center">Ingresar</button>
+  </form>
+</section>
+
+<div id="appView" class="hidden">
+  <header>
+    <div class="head-in">
+      <div>
+        <div class="brand"><b>SISE<span>»</span></b><small>Misión SISE · Panel docente</small></div>
+        <div class="who" id="whoLabel"></div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="refreshBtn" type="button"><svg class="i"><use href="#i-refresh"/></svg>Actualizar</button>
+        <button class="btn" id="exportBtn" type="button"><svg class="i"><use href="#i-download"/></svg>Exportar CSV</button>
+        <button class="btn" id="logoutBtn" type="button"><svg class="i"><use href="#i-logout"/></svg>Salir</button>
+      </div>
+    </div>
+  </header>
+  <main>
+    <div>
+      <h2>Avance de tus estudiantes</h2>
+      <p class="sub">Cada puerta pasa de <b>bloqueada</b> a <b>llave obtenida</b> (ingresó la clave de Canvas) y a <b>refuerzo abierto</b> (usó la llave). <span class="sync" id="syncLabel"></span></p>
+    </div>
+
+    <section class="kpis" id="kpis" aria-label="Indicadores"></section>
+
+    <section class="funnel" aria-label="Puertas desbloqueadas">
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">
+        <h2 style="font-size:20px">Puertas desbloqueadas</h2>
+        <div class="legend"><span><i style="background:#F4B740"></i>Llave obtenida</span><span><i style="background:var(--ok)"></i>Refuerzo abierto</span></div>
+      </div>
+      <div id="funnel"></div>
+    </section>
+
+    <section class="filters">
+      <div><label for="secFilter">Sección</label><select id="secFilter"><option value="">Todas</option></select></div>
+      <div><label for="stateFilter">Estado</label><select id="stateFilter">
+        <option value="">Todos</option><option value="none">Aún sin llaves</option><option value="progress">En curso (1 a 4 llaves)</option>
+        <option value="five">5 llaves reunidas</option><option value="final">Portal final completado</option><option value="idle">Sin actividad en 7 días</option>
+      </select></div>
+      <div class="search"><label for="searchInput">Buscar estudiante</label><input id="searchInput" placeholder="Nombre, apellido o correo"></div>
+    </section>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Estudiante</th><th>Sección</th><th>Puertas 1–5</th><th>Llaves</th><th>Minijuegos</th><th>Portal final</th><th>Avance</th><th>Última actividad</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="8" class="empty">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+    <p class="sync" id="countLabel"></p>
+  </main>
+</div>
+
+<div id="drawerBack" class="drawer-back hidden"></div>
+<aside id="drawer" class="drawer hidden" aria-label="Detalle del estudiante">
+  <div class="drawer-head"><div><h3 id="dName"></h3><div class="who" id="dMeta"></div></div><button class="iconbtn" id="dClose" type="button" aria-label="Cerrar"><svg class="i"><use href="#i-close"/></svg></button></div>
+  <div class="drawer-body" id="dBody"></div>
+</aside>
+
+<script>
+/* CONFIGURACIÓN: la misma URL /exec que usa el videojuego. */
+const ENDPOINT='https://script.google.com/macros/s/AKfycbyETuKOimu-3yn4RVr9URzZ_kCA5u08p1MNSRoEm4T2Pk7-b4s9ODxUXVYpy5WcPuWs3w/exec';
+const DOORS=['Descubrirme','Definirme','Proyectarme','Demostrarme','Simula'];
+const $=id=>document.getElementById(id);
+let data=null;
+const keyGet=()=>{try{return sessionStorage.getItem('ms_teacher_key')||''}catch(e){return window.__k||''}};
+const keySet=k=>{window.__k=k;try{k?sessionStorage.setItem('ms_teacher_key',k):sessionStorage.removeItem('ms_teacher_key')}catch(e){}};
+const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+async function api(body){
+  if(!/^https:\/\/script\.google\.com\/macros\/s\//.test(ENDPOINT))throw new Error('Falta configurar la URL del Apps Script en el panel.');
+  const r=await fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({teacherKey:keyGet(),...body}),redirect:'follow'});
+  let j;try{j=await r.json()}catch(e){throw new Error('El servidor no respondió correctamente. Revisa que la implementación tenga acceso «Cualquier persona».')}
+  if(!j.ok)throw new Error(j.error||'Error del servidor');return j;
+}
+async function load(){
+  $('refreshBtn').disabled=true;$('syncLabel').textContent='Actualizando…';
+  try{data=await api({action:'teacherSnapshot'});
+    $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
+    $('whoLabel').textContent=data.teacher+(data.sections?` · Secciones: ${data.sections.map(s=>s.toUpperCase()).join(', ')}`:' · Todas las secciones');
+    $('syncLabel').textContent='Actualizado: '+new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+    fillSections();render();
+  }catch(e){if(/clave/i.test(e.message)){keySet('');$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('loginErr').textContent=e.message}else{$('syncLabel').textContent='No se pudo actualizar: '+e.message;if($('appView').classList.contains('hidden'))$('loginErr').textContent=e.message}}
+  finally{$('refreshBtn').disabled=false}
+}
+function fillSections(){const cur=$('secFilter').value,secs=[...new Set(data.students.map(s=>s.section).filter(Boolean))].sort();$('secFilter').innerHTML='<option value="">Todas</option>'+secs.map(s=>`<option ${s===cur?'selected':''}>${esc(s)}</option>`).join('')}
+const daysSince=iso=>iso?(Date.now()-new Date(iso).getTime())/864e5:Infinity;
+function relTime(iso){if(!iso)return'—';const d=daysSince(iso);if(d<1/24)return'Hace minutos';if(d<1)return`Hace ${Math.round(d*24)} h`;if(d<2)return'Ayer';if(d<30)return`Hace ${Math.floor(d)} días`;return new Date(iso).toLocaleDateString('es-PE')}
+function filtered(){const sec=$('secFilter').value,st=$('stateFilter').value,q=$('searchInput').value.trim().toLowerCase();
+  return data.students.filter(s=>(!sec||s.section===sec)&&(!q||(s.firstName+' '+s.lastName+' '+s.email).toLowerCase().includes(q))&&
+    (!st||(st==='none'&&s.keysCount===0)||(st==='progress'&&s.keysCount>0&&s.keysCount<5)||(st==='five'&&s.keysCount===5)||(st==='final'&&s.final)||(st==='idle'&&daysSince(s.lastSeen)>7)))
+   .sort((a,b)=>(a.lastName+a.firstName).localeCompare(b.lastName+b.firstName,'es'))}
+function render(){
+  const list=filtered(),n=list.length,avg=n?Math.round(list.reduce((a,s)=>a+s.percent,0)/n):0;
+  const kpi=(label,val,meta,cls='')=>`<div class="kpi ${cls}"><span>${label}</span><b>${val}</b><small>${meta}</small></div>`;
+  $('kpis').innerHTML=[kpi('Estudiantes que ingresaron',n,'según los filtros'),kpi('Con al menos 1 llave',list.filter(s=>s.keysCount>0).length,n?Math.round(list.filter(s=>s.keysCount>0).length/n*100)+'% del grupo':'—'),
+    kpi('Reunieron las 5 llaves',list.filter(s=>s.keysCount===5).length,n?Math.round(list.filter(s=>s.keysCount===5).length/n*100)+'% del grupo':'—','accent'),
+    kpi('Portal final completado',list.filter(s=>s.final).length,'Misión final integrada'),kpi('Avance promedio',avg+'%','XP, llaves y portal final')].join('');
+  $('funnel').innerHTML=DOORS.map((d,i)=>{const k=list.filter(s=>s.keys[i]).length,r=list.filter(s=>s.rooms[i]).length,pk=n?k/n*100:0,pr=n?r/n*100:0;
+    return `<div class="frow"><b>Puerta ${i+1} · ${d}</b><div class="track" title="${k} con llave · ${r} con refuerzo abierto"><i class="k" style="width:${pk}%"></i><i class="r" style="width:${pr}%"></i></div><em>${k} de ${n} · ${Math.round(pk)}%</em></div>`}).join('');
+  $('rows').innerHTML=n?list.map(s=>`<tr data-email="${esc(s.email)}">
+    <td class="stu"><b>${esc(s.lastName)}, ${esc(s.firstName)}</b><small>${esc(s.email)}</small></td>
+    <td>${esc(s.section||'—')}</td>
+    <td><div class="doors">${DOORS.map((d,i)=>{const c=s.rooms[i]?'open':s.keys[i]?'key':'lock',t=s.rooms[i]?'Refuerzo abierto':s.keys[i]?'Llave obtenida':'Bloqueada';return `<span class="door ${c}" title="Puerta ${i+1} · ${d}: ${t}">${i+1}</span>`}).join('')}</div></td>
+    <td class="num">${s.keysCount}/5</td><td class="num">${s.mini}/5</td>
+    <td><span class="pill ${s.final?'ok':'no'}">${s.final?'Completado':'Pendiente'}</span></td>
+    <td class="num">${s.percent}%<div class="bar"><i style="width:${s.percent}%"></i></div></td>
+    <td>${relTime(s.lastSeen)}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">Todavía no hay estudiantes con estos filtros. Cuando ingresen al juego aparecerán aquí.</td></tr>';
+  $('countLabel').textContent=`${n} estudiante${n===1?'':'s'} en la lista. Pulsa una fila para ver su actividad.`;
+}
+async function openStudent(email){
+  const s=data.students.find(x=>x.email===email);if(!s)return;
+  $('dName').textContent=s.firstName+' '+s.lastName;$('dMeta').textContent=`${s.email} · ${s.section||'Sin sección'} · ${s.logins} ingreso${s.logins===1?'':'s'}`;
+  $('dBody').innerHTML=`<div><h2 style="font-size:18px">Puertas</h2><div class="doorlist">${DOORS.map((d,i)=>`<div class="doorline"><span>Puerta ${i+1} · ${d}</span><span class="pill ${s.rooms[i]?'ok':'no'}" style="${!s.rooms[i]&&s.keys[i]?'background:var(--key-bg);color:var(--key)':''}">${s.rooms[i]?'Refuerzo abierto':s.keys[i]?'Llave obtenida':'Bloqueada'}</span></div>`).join('')}</div></div>
+    <div class="num" style="color:var(--muted)">Refuerzos revisados: <b style="color:var(--ink)">${s.reviewed}/5</b> · Minijuegos: <b style="color:var(--ink)">${s.mini}/5</b> · XP: <b style="color:var(--ink)">${s.xp}</b> · Nivel ${s.level}<br>Sala actual: <b style="color:var(--ink)">${esc(s.current)}</b><br>Primer ingreso: ${s.firstSeen?new Date(s.firstSeen).toLocaleString('es-PE'):'—'}</div>
+    <div><h2 style="font-size:18px">Actividad reciente</h2><div class="timeline" id="tl"><p class="sync">Cargando actividad…</p></div></div>`;
+  $('drawer').classList.remove('hidden');$('drawerBack').classList.remove('hidden');$('dClose').focus();
+  try{const r=await api({action:'studentActivity',email});$('tl').innerHTML=r.events.length?r.events.map(e=>`<div class="ev"><b>${esc(e.title)}</b><small>${esc(e.time||new Date(e.at).toLocaleString('es-PE'))}</small>${e.detail?`<p>${esc(e.detail)}</p>`:''}</div>`).join(''):'<p class="sync">Sin actividad registrada todavía.</p>'}
+  catch(e){$('tl').innerHTML=`<p class="err">No se pudo cargar la actividad: ${esc(e.message)}</p>`}
+}
+function closeDrawer(){$('drawer').classList.add('hidden');$('drawerBack').classList.add('hidden')}
+function exportCsv(){if(!data)return;const head=['Apellidos','Nombres','Correo','Sección',...DOORS.map((d,i)=>`Puerta ${i+1} ${d}`),'Llaves','Minijuegos','Refuerzos revisados','Portal final','Avance %','XP','Ingresos','Última actividad'];
+  const rows=filtered().map(s=>[s.lastName,s.firstName,s.email,s.section,...DOORS.map((d,i)=>s.rooms[i]?'Refuerzo abierto':s.keys[i]?'Llave obtenida':'Bloqueada'),s.keysCount,s.mini,s.reviewed,s.final?'Completado':'Pendiente',s.percent,s.xp,s.logins,s.lastSeen?new Date(s.lastSeen).toLocaleString('es-PE'):'']);
+  const csv=[head,...rows].map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));a.download='Mision_SISE_avance_'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+
+$('loginForm').addEventListener('submit',e=>{e.preventDefault();$('loginErr').textContent='';keySet($('keyInput').value.trim());load()});
+$('refreshBtn').onclick=load;$('exportBtn').onclick=exportCsv;
+$('logoutBtn').onclick=()=>{keySet('');data=null;$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('keyInput').value=''};
+['secFilter','stateFilter'].forEach(id=>$(id).addEventListener('change',render));$('searchInput').addEventListener('input',render);
+$('rows').addEventListener('click',e=>{const tr=e.target.closest('tr[data-email]');if(tr)openStudent(tr.dataset.email)});
+$('dClose').onclick=closeDrawer;$('drawerBack').onclick=closeDrawer;document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
+if(keyGet())load();
+</script>
+</body>
+</html>
