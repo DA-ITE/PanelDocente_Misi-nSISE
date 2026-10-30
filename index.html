@@ -69,7 +69,7 @@ h2{font-family:var(--display);font-size:24px;font-weight:700;margin:0 0 4px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 
 /* Filtros y tabla */
-.filters{display:grid;grid-template-columns:200px 240px minmax(0,1fr);gap:12px;align-items:end}
+.filters{display:grid;grid-template-columns:260px 160px 220px minmax(0,1fr);gap:12px;align-items:end}
 .table-wrap{border:1px solid var(--line);border-radius:14px;overflow-x:auto}
 table{width:100%;border-collapse:collapse;min-width:980px}
 th{background:var(--ink);color:var(--white);font-size:12px;font-weight:600;text-align:left;padding:10px 12px;white-space:nowrap}
@@ -160,6 +160,7 @@ tbody tr:hover td{background:#FAFAFB}
     </section>
 
     <section class="filters">
+      <div><label for="teaFilter">Docente</label><select id="teaFilter"><option value="">Todos</option></select></div>
       <div><label for="secFilter">Sección</label><select id="secFilter"><option value="">Todas</option></select></div>
       <div><label for="stateFilter">Estado</label><select id="stateFilter">
         <option value="">Todos</option><option value="none">Aún sin llaves</option><option value="progress">En curso (1 a 4 llaves)</option>
@@ -170,7 +171,7 @@ tbody tr:hover td{background:#FAFAFB}
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Estudiante</th><th>Sección</th><th>Puertas 1–5</th><th>Llaves</th><th>Minijuegos</th><th>Portal final</th><th>Avance</th><th>Última actividad</th></tr></thead>
+        <thead><tr><th>Estudiante</th><th>Sección · Docente</th><th>Puertas 1–5</th><th>Llaves</th><th>Minijuegos</th><th>Portal final</th><th>Avance</th><th>Última actividad</th></tr></thead>
         <tbody id="rows"><tr><td colspan="8" class="empty">Cargando…</td></tr></tbody>
       </table>
     </div>
@@ -210,11 +211,12 @@ async function load(){
   }catch(e){if(/clave/i.test(e.message)){keySet('');$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('loginErr').textContent=e.message}else{$('syncLabel').textContent='No se pudo actualizar: '+e.message;if($('appView').classList.contains('hidden'))$('loginErr').textContent=e.message}}
   finally{$('refreshBtn').disabled=false}
 }
-function fillSections(){const cur=$('secFilter').value,secs=[...new Set(data.students.map(s=>s.section).filter(Boolean))].sort();$('secFilter').innerHTML='<option value="">Todas</option>'+secs.map(s=>`<option ${s===cur?'selected':''}>${esc(s)}</option>`).join('')}
+function fillSections(){const ct=$('teaFilter').value,ts=[...new Set(data.students.map(s=>s.teacher).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));$('teaFilter').innerHTML='<option value="">Todos</option>'+ts.map(t=>`<option ${t===ct?'selected':''}>${esc(t)}</option>`).join('');$('teaFilter').closest('div').style.display=ts.length>1?'':'none';
+ const cur=$('secFilter').value,secs=[...new Set(data.students.filter(s=>!$('teaFilter').value||s.teacher===$('teaFilter').value).map(s=>s.section).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));$('secFilter').innerHTML='<option value="">Todas</option>'+secs.map(s=>`<option ${s===cur?'selected':''}>${esc(s)}</option>`).join('')}
 const daysSince=iso=>iso?(Date.now()-new Date(iso).getTime())/864e5:Infinity;
 function relTime(iso){if(!iso)return'—';const d=daysSince(iso);if(d<1/24)return'Hace minutos';if(d<1)return`Hace ${Math.round(d*24)} h`;if(d<2)return'Ayer';if(d<30)return`Hace ${Math.floor(d)} días`;return new Date(iso).toLocaleDateString('es-PE')}
-function filtered(){const sec=$('secFilter').value,st=$('stateFilter').value,q=$('searchInput').value.trim().toLowerCase();
-  return data.students.filter(s=>(!sec||s.section===sec)&&(!q||(s.firstName+' '+s.lastName+' '+s.email).toLowerCase().includes(q))&&
+function filtered(){const tea=$('teaFilter').value,sec=$('secFilter').value,st=$('stateFilter').value,q=$('searchInput').value.trim().toLowerCase();
+  return data.students.filter(s=>(!tea||s.teacher===tea)&&(!sec||s.section===sec)&&(!q||(s.firstName+' '+s.lastName+' '+s.email).toLowerCase().includes(q))&&
     (!st||(st==='none'&&s.keysCount===0)||(st==='progress'&&s.keysCount>0&&s.keysCount<5)||(st==='five'&&s.keysCount===5)||(st==='final'&&s.final)||(st==='idle'&&daysSince(s.lastSeen)>7)))
    .sort((a,b)=>(a.lastName+a.firstName).localeCompare(b.lastName+b.firstName,'es'))}
 function render(){
@@ -227,7 +229,7 @@ function render(){
     return `<div class="frow"><b>Puerta ${i+1} · ${d}</b><div class="track" title="${k} con llave · ${r} con refuerzo abierto"><i class="k" style="width:${pk}%"></i><i class="r" style="width:${pr}%"></i></div><em>${k} de ${n} · ${Math.round(pk)}%</em></div>`}).join('');
   $('rows').innerHTML=n?list.map(s=>`<tr data-email="${esc(s.email)}">
     <td class="stu"><b>${esc(s.lastName)}, ${esc(s.firstName)}</b><small>${esc(s.email)}</small></td>
-    <td>${esc(s.section||'—')}</td>
+    <td>${esc(s.section||'—')}<br><small style="color:var(--muted)">${esc(s.teacher||'')}</small></td>
     <td><div class="doors">${DOORS.map((d,i)=>{const c=s.rooms[i]?'open':s.keys[i]?'key':'lock',t=s.rooms[i]?'Refuerzo abierto':s.keys[i]?'Llave obtenida':'Bloqueada';return `<span class="door ${c}" title="Puerta ${i+1} · ${d}: ${t}">${i+1}</span>`}).join('')}</div></td>
     <td class="num">${s.keysCount}/5</td><td class="num">${s.mini}/5</td>
     <td><span class="pill ${s.final?'ok':'no'}">${s.final?'Completado':'Pendiente'}</span></td>
@@ -237,7 +239,7 @@ function render(){
 }
 async function openStudent(email){
   const s=data.students.find(x=>x.email===email);if(!s)return;
-  $('dName').textContent=s.firstName+' '+s.lastName;$('dMeta').textContent=`${s.email} · ${s.section||'Sin sección'} · ${s.logins} ingreso${s.logins===1?'':'s'}`;
+  $('dName').textContent=s.firstName+' '+s.lastName;$('dMeta').textContent=`${s.email} · ${s.career||'MAE'} · ${s.section||'Sin sección'}${s.teacher?' · '+s.teacher:''} · ${s.logins} ingreso${s.logins===1?'':'s'}`;
   $('dBody').innerHTML=`<div><h2 style="font-size:18px">Puertas</h2><div class="doorlist">${DOORS.map((d,i)=>`<div class="doorline"><span>Puerta ${i+1} · ${d}</span><span class="pill ${s.rooms[i]?'ok':'no'}" style="${!s.rooms[i]&&s.keys[i]?'background:var(--key-bg);color:var(--key)':''}">${s.rooms[i]?'Refuerzo abierto':s.keys[i]?'Llave obtenida':'Bloqueada'}</span></div>`).join('')}</div></div>
     <div class="num" style="color:var(--muted)">Refuerzos revisados: <b style="color:var(--ink)">${s.reviewed}/5</b> · Minijuegos: <b style="color:var(--ink)">${s.mini}/5</b> · XP: <b style="color:var(--ink)">${s.xp}</b> · Nivel ${s.level}<br>Sala actual: <b style="color:var(--ink)">${esc(s.current)}</b><br>Primer ingreso: ${s.firstSeen?new Date(s.firstSeen).toLocaleString('es-PE'):'—'}</div>
     <div><h2 style="font-size:18px">Actividad reciente</h2><div class="timeline" id="tl"><p class="sync">Cargando actividad…</p></div></div>`;
@@ -246,15 +248,15 @@ async function openStudent(email){
   catch(e){$('tl').innerHTML=`<p class="err">No se pudo cargar la actividad: ${esc(e.message)}</p>`}
 }
 function closeDrawer(){$('drawer').classList.add('hidden');$('drawerBack').classList.add('hidden')}
-function exportCsv(){if(!data)return;const head=['Apellidos','Nombres','Correo','Sección',...DOORS.map((d,i)=>`Puerta ${i+1} ${d}`),'Llaves','Minijuegos','Refuerzos revisados','Portal final','Avance %','XP','Ingresos','Última actividad'];
-  const rows=filtered().map(s=>[s.lastName,s.firstName,s.email,s.section,...DOORS.map((d,i)=>s.rooms[i]?'Refuerzo abierto':s.keys[i]?'Llave obtenida':'Bloqueada'),s.keysCount,s.mini,s.reviewed,s.final?'Completado':'Pendiente',s.percent,s.xp,s.logins,s.lastSeen?new Date(s.lastSeen).toLocaleString('es-PE'):'']);
+function exportCsv(){if(!data)return;const head=['Apellidos','Nombres','Correo','Carrera','Docente','Sección',...DOORS.map((d,i)=>`Puerta ${i+1} ${d}`),'Llaves','Minijuegos','Refuerzos revisados','Portal final','Avance %','XP','Ingresos','Última actividad'];
+  const rows=filtered().map(s=>[s.lastName,s.firstName,s.email,s.career,s.teacher,s.section,...DOORS.map((d,i)=>s.rooms[i]?'Refuerzo abierto':s.keys[i]?'Llave obtenida':'Bloqueada'),s.keysCount,s.mini,s.reviewed,s.final?'Completado':'Pendiente',s.percent,s.xp,s.logins,s.lastSeen?new Date(s.lastSeen).toLocaleString('es-PE'):'']);
   const csv=[head,...rows].map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));a.download='Mision_SISE_avance_'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
 
 $('loginForm').addEventListener('submit',e=>{e.preventDefault();$('loginErr').textContent='';keySet($('keyInput').value.trim());load()});
 $('refreshBtn').onclick=load;$('exportBtn').onclick=exportCsv;
 $('logoutBtn').onclick=()=>{keySet('');data=null;$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('keyInput').value=''};
-['secFilter','stateFilter'].forEach(id=>$(id).addEventListener('change',render));$('searchInput').addEventListener('input',render);
+$('teaFilter').addEventListener('change',()=>{$('secFilter').value='';fillSections();render()});['secFilter','stateFilter'].forEach(id=>$(id).addEventListener('change',render));$('searchInput').addEventListener('input',render);
 $('rows').addEventListener('click',e=>{const tr=e.target.closest('tr[data-email]');if(tr)openStudent(tr.dataset.email)});
 $('dClose').onclick=closeDrawer;$('drawerBack').onclick=closeDrawer;document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
 if(keyGet())load();
