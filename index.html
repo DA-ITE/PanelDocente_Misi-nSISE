@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
 <style>
-/* Panel docente: fondo blanco, rojo SISE como acento, plomo claro de apoyo. Tabla de estudiantes con puertas 1–5. */
+/* Panel docente: fondo blanco, rojo SISE como acento, plomo claro de apoyo. Un solo panel para todos los cursos de Misión SISE. */
 :root{
   --red:#FF0E49; --red-dark:#C70A3D; --ink:#231F20; --muted:#6B6B70; --line:#E4E4E7; --plomo:#F3F3F4; --white:#FFFFFF;
   --ok:#17845E; --ok-bg:#E6F4EE; --key:#A86A00; --key-bg:#FFF3DC; --lock:#9A9AA0; --lock-bg:#F1F1F3;
@@ -103,6 +103,10 @@ tbody tr:hover td{background:#FAFAFB}
 .ev::before{content:"";position:absolute;left:-6px;top:3px;width:10px;height:10px;border-radius:50%;background:var(--red)}
 .ev b{display:block;font-size:13px}.ev small{color:var(--muted);font-size:12px}
 .ev p{margin:2px 0 0;color:var(--muted);font-size:12.5px}
+.course-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.course-tabs button{border:1px solid var(--line);background:var(--white);color:var(--muted);border-radius:999px;padding:6px 14px;font-weight:600;font-size:13px;cursor:pointer}
+.course-tabs button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--white)}
+.course-name{font-weight:600;color:var(--ink)}
 .iconbtn{border:1px solid var(--line);background:var(--white);border-radius:10px;width:36px;height:36px;display:grid;place-items:center;cursor:pointer}
 
 @media (max-width:1000px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.filters{grid-template-columns:1fr 1fr}.filters .search{grid-column:1/-1}.frow{grid-template-columns:120px minmax(0,1fr) 92px}}
@@ -121,7 +125,7 @@ tbody tr:hover td{background:#FAFAFB}
   <form id="loginForm" class="login-card">
     <div class="brand"><b>SISE<span>»</span></b><small>Misión SISE · NOVA</small></div>
     <h1>Panel docente</h1>
-    <p>Revisa qué estudiantes ingresaron al juego y qué puertas han desbloqueado.</p>
+    <p>Revisa qué estudiantes ingresaron al juego y qué puertas han desbloqueado. Usa la clave que te entregó coordinación; verás solo tus secciones.</p>
     <label for="keyInput">Clave docente</label>
     <input id="keyInput" type="password" autocomplete="off" required>
     <p id="loginErr" class="err"></p>
@@ -135,6 +139,7 @@ tbody tr:hover td{background:#FAFAFB}
       <div>
         <div class="brand"><b>SISE<span>»</span></b><small>Misión SISE · Panel docente</small></div>
         <div class="who" id="whoLabel"></div>
+        <div class="course-tabs" id="courseTabs" role="group" aria-label="Curso"></div>
       </div>
       <div class="actions">
         <button class="btn" id="refreshBtn" type="button"><svg class="i"><use href="#i-refresh"/></svg>Actualizar</button>
@@ -163,15 +168,15 @@ tbody tr:hover td{background:#FAFAFB}
       <div><label for="teaFilter">Docente</label><select id="teaFilter"><option value="">Todos</option></select></div>
       <div><label for="secFilter">Sección</label><select id="secFilter"><option value="">Todas</option></select></div>
       <div><label for="stateFilter">Estado</label><select id="stateFilter">
-        <option value="">Todos</option><option value="none">Aún sin llaves</option><option value="progress">En curso (1 a 4 llaves)</option>
-        <option value="five">5 llaves reunidas</option><option value="final">Portal final completado</option><option value="idle">Sin actividad en 7 días</option>
+        <option value="">Todos</option><option value="none">Aún sin llaves</option><option value="progress">En curso (al menos 1 llave)</option>
+        <option value="all" id="optAll">Todas las llaves reunidas</option><option value="final">Misión final completada</option><option value="idle">Sin actividad en 7 días</option>
       </select></div>
       <div class="search"><label for="searchInput">Buscar estudiante</label><input id="searchInput" placeholder="Nombre, apellido o correo"></div>
     </section>
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Estudiante</th><th>Sección · Docente</th><th>Puertas 1–5</th><th>Llaves</th><th>Minijuegos</th><th>Portal final</th><th>Avance</th><th>Última actividad</th></tr></thead>
+        <thead><tr><th>Estudiante</th><th>Sección · Docente</th><th id="thDoors">Puertas</th><th>Llaves</th><th>Minijuegos</th><th>Misión final</th><th>Avance</th><th>Última actividad</th></tr></thead>
         <tbody id="rows"><tr><td colspan="8" class="empty">Cargando…</td></tr></tbody>
       </table>
     </div>
@@ -186,29 +191,53 @@ tbody tr:hover td{background:#FAFAFB}
 </aside>
 
 <script>
-/* CONFIGURACIÓN: la misma URL /exec que usa el videojuego. */
-const ENDPOINT='https://script.google.com/macros/s/AKfycbyETuKOimu-3yn4RVr9URzZ_kCA5u08p1MNSRoEm4T2Pk7-b4s9ODxUXVYpy5WcPuWs3w/exec';
-const DOORS=['Descubrirme','Definirme','Proyectarme','Demostrarme','Simula'];
+/* CONFIGURACIÓN: un curso por Apps Script. Cada curso tiene su propia pestaña Docentes con sus claves.
+   Al ingresar, la clave se prueba en cada curso y se muestran solo los cursos donde es válida. */
+const COURSES=[
+  {id:'mae',name:'Empleabilidad · MAE',endpoint:'https://script.google.com/macros/s/AKfycbyETuKOimu-3yn4RVr9URzZ_kCA5u08p1MNSRoEm4T2Pk7-b4s9ODxUXVYpy5WcPuWs3w/exec',
+   doors:['Descubrirme','Definirme','Proyectarme','Demostrarme','Simula']},
+  {id:'comef',name:'T. de Com. Ef. y Res. de Conf.',endpoint:'https://script.google.com/macros/s/AKfycbwR1EYQJReRa8bXnGwwJgeIkWjb9zJq-HGCEmbvCOWBEfdJWx8wq-nhtAPLSkJrlsFc/exec',
+   doors:['Comunicación estratégica','Resolución de conflictos','Negociación','Impacto']}
+];
 const $=id=>document.getElementById(id);
-let data=null;
-const keyGet=()=>{try{return sessionStorage.getItem('ms_teacher_key')||''}catch(e){return window.__k||''}};
-const keySet=k=>{window.__k=k;try{k?sessionStorage.setItem('ms_teacher_key',k):sessionStorage.removeItem('ms_teacher_key')}catch(e){}};
+let data=null,course=null,myCourses=[];
+const ss=(k,v)=>{try{if(v===undefined)return sessionStorage.getItem(k)||'';v?sessionStorage.setItem(k,v):sessionStorage.removeItem(k)}catch(e){window['__'+k]=v;return window['__'+k]||''}};
+const keyGet=()=>ss('ms_teacher_key')||window.__k||'';
+const keySet=k=>{window.__k=k;ss('ms_teacher_key',k)};
+const ready=c=>/^https:\/\/script\.google\.com\/macros\/s\//.test(c.endpoint);
+const DOORS=()=>(data&&Array.isArray(data.doors)&&data.doors.length?data.doors:course.doors);
+const ND=()=>DOORS().length;
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
-async function api(body){
-  if(!/^https:\/\/script\.google\.com\/macros\/s\//.test(ENDPOINT))throw new Error('Falta configurar la URL del Apps Script en el panel.');
-  const r=await fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({teacherKey:keyGet(),...body}),redirect:'follow'});
+async function api(body,c=course){
+  if(!c||!ready(c))throw new Error('Falta configurar la URL del Apps Script en el panel.');
+  const r=await fetch(c.endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({teacherKey:keyGet(),...body}),redirect:'follow'});
   let j;try{j=await r.json()}catch(e){throw new Error('El servidor no respondió correctamente. Revisa que la implementación tenga acceso «Cualquier persona».')}
   if(!j.ok)throw new Error(j.error||'Error del servidor');return j;
 }
-async function load(){
+/* Prueba la clave en todos los cursos configurados y guarda en cuáles es válida */
+async function discover(){
+  const tries=await Promise.all(COURSES.filter(ready).map(c=>api({action:'teacherSnapshot'},c).then(d=>({c,d})).catch(e=>({c,e}))));
+  const ok=tries.filter(t=>t.d);
+  if(!ok.length){const other=tries.find(t=>t.e&&!/incorrecta/i.test(t.e.message));throw new Error(other?other.e.message:'Clave docente incorrecta.')}
+  myCourses=ok.map(t=>t.c.id);ss('ms_courses',myCourses.join(','));
+  const keep=ok.find(t=>t.c.id===ss('ms_course'))||ok[0];
+  course=keep.c;ss('ms_course',course.id);return keep.d;
+}
+function renderTabs(){
+  const list=COURSES.filter(c=>myCourses.includes(c.id));
+  $('courseTabs').innerHTML=list.length>1?list.map(c=>`<button type="button" data-c="${c.id}" aria-pressed="${c.id===course.id}">${esc(c.name)}</button>`).join(''):'';
+}
+async function load(first){
   $('refreshBtn').disabled=true;$('syncLabel').textContent='Actualizando…';
-  try{data=await api({action:'teacherSnapshot'});
+  try{
+    if(first||!course||!myCourses.length)data=await discover();else data=await api({action:'teacherSnapshot'});
     $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
-    $('whoLabel').textContent=data.teacher+(data.sections?` · Secciones: ${data.sections.map(s=>s.toUpperCase()).join(', ')}`:' · Todas las secciones');
+    $('whoLabel').innerHTML=`<span class="course-name">${esc(course.name)}</span> · ${esc(data.teacher)}`+(data.sections?` · Secciones: ${esc(data.sections.map(s=>s.toUpperCase()).join(', '))}`:' · Todas las secciones');
+    renderTabs();$('optAll').textContent=`${ND()} llaves reunidas`;$('thDoors').textContent=`Puertas 1–${ND()}`;
     $('syncLabel').textContent='Actualizado: '+new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
     fillSections();render();
-  }catch(e){if(/clave/i.test(e.message)){keySet('');$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('loginErr').textContent=e.message}else{$('syncLabel').textContent='No se pudo actualizar: '+e.message;if($('appView').classList.contains('hidden'))$('loginErr').textContent=e.message}}
+  }catch(e){if(/clave/i.test(e.message)){keySet('');ss('ms_courses','');myCourses=[];$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('loginErr').textContent=e.message}else{$('syncLabel').textContent='No se pudo actualizar: '+e.message;if($('appView').classList.contains('hidden'))$('loginErr').textContent=e.message}}
   finally{$('refreshBtn').disabled=false}
 }
 function fillSections(){const ct=$('teaFilter').value,ts=[...new Set(data.students.map(s=>s.teacher).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));$('teaFilter').innerHTML='<option value="">Todos</option>'+ts.map(t=>`<option ${t===ct?'selected':''}>${esc(t)}</option>`).join('');$('teaFilter').closest('div').style.display=ts.length>1?'':'none';
@@ -217,21 +246,21 @@ const daysSince=iso=>iso?(Date.now()-new Date(iso).getTime())/864e5:Infinity;
 function relTime(iso){if(!iso)return'—';const d=daysSince(iso);if(d<1/24)return'Hace minutos';if(d<1)return`Hace ${Math.round(d*24)} h`;if(d<2)return'Ayer';if(d<30)return`Hace ${Math.floor(d)} días`;return new Date(iso).toLocaleDateString('es-PE')}
 function filtered(){const tea=$('teaFilter').value,sec=$('secFilter').value,st=$('stateFilter').value,q=$('searchInput').value.trim().toLowerCase();
   return data.students.filter(s=>(!tea||s.teacher===tea)&&(!sec||s.section===sec)&&(!q||(s.firstName+' '+s.lastName+' '+s.email).toLowerCase().includes(q))&&
-    (!st||(st==='none'&&s.keysCount===0)||(st==='progress'&&s.keysCount>0&&s.keysCount<5)||(st==='five'&&s.keysCount===5)||(st==='final'&&s.final)||(st==='idle'&&daysSince(s.lastSeen)>7)))
+    (!st||(st==='none'&&s.keysCount===0)||(st==='progress'&&s.keysCount>0&&s.keysCount<ND())||(st==='all'&&s.keysCount>=ND())||(st==='final'&&s.final)||(st==='idle'&&daysSince(s.lastSeen)>7)))
    .sort((a,b)=>(a.lastName+a.firstName).localeCompare(b.lastName+b.firstName,'es'))}
 function render(){
   const list=filtered(),n=list.length,avg=n?Math.round(list.reduce((a,s)=>a+s.percent,0)/n):0;
   const kpi=(label,val,meta,cls='')=>`<div class="kpi ${cls}"><span>${label}</span><b>${val}</b><small>${meta}</small></div>`;
   $('kpis').innerHTML=[kpi('Estudiantes que ingresaron',n,'según los filtros'),kpi('Con al menos 1 llave',list.filter(s=>s.keysCount>0).length,n?Math.round(list.filter(s=>s.keysCount>0).length/n*100)+'% del grupo':'—'),
-    kpi('Reunieron las 5 llaves',list.filter(s=>s.keysCount===5).length,n?Math.round(list.filter(s=>s.keysCount===5).length/n*100)+'% del grupo':'—','accent'),
-    kpi('Portal final completado',list.filter(s=>s.final).length,'Misión final integrada'),kpi('Avance promedio',avg+'%','XP, llaves y portal final')].join('');
-  $('funnel').innerHTML=DOORS.map((d,i)=>{const k=list.filter(s=>s.keys[i]).length,r=list.filter(s=>s.rooms[i]).length,pk=n?k/n*100:0,pr=n?r/n*100:0;
+    kpi(`Reunieron las ${ND()} llaves`,list.filter(s=>s.keysCount>=ND()).length,n?Math.round(list.filter(s=>s.keysCount>=ND()).length/n*100)+'% del grupo':'—','accent'),
+    kpi('Misión final completada',list.filter(s=>s.final).length,'Integra todas las llaves'),kpi('Avance promedio',avg+'%','Llaves, refuerzos y misión final')].join('');
+  $('funnel').innerHTML=DOORS().map((d,i)=>{const k=list.filter(s=>s.keys[i]).length,r=list.filter(s=>s.rooms[i]).length,pk=n?k/n*100:0,pr=n?r/n*100:0;
     return `<div class="frow"><b>Puerta ${i+1} · ${d}</b><div class="track" title="${k} con llave · ${r} con refuerzo abierto"><i class="k" style="width:${pk}%"></i><i class="r" style="width:${pr}%"></i></div><em>${k} de ${n} · ${Math.round(pk)}%</em></div>`}).join('');
   $('rows').innerHTML=n?list.map(s=>`<tr data-email="${esc(s.email)}">
     <td class="stu"><b>${esc(s.lastName)}, ${esc(s.firstName)}</b><small>${esc(s.email)}</small></td>
     <td>${esc(s.section||'—')}<br><small style="color:var(--muted)">${esc(s.teacher||'')}</small></td>
-    <td><div class="doors">${DOORS.map((d,i)=>{const c=s.rooms[i]?'open':s.keys[i]?'key':'lock',t=s.rooms[i]?'Refuerzo abierto':s.keys[i]?'Llave obtenida':'Bloqueada';return `<span class="door ${c}" title="Puerta ${i+1} · ${d}: ${t}">${i+1}</span>`}).join('')}</div></td>
-    <td class="num">${s.keysCount}/5</td><td class="num">${s.mini}/5</td>
+    <td><div class="doors">${DOORS().map((d,i)=>{const c=s.rooms[i]?'open':s.keys[i]?'key':'lock',t=s.rooms[i]?'Refuerzo abierto':s.keys[i]?'Llave obtenida':'Bloqueada';return `<span class="door ${c}" title="Puerta ${i+1} · ${d}: ${t}">${i+1}</span>`}).join('')}</div></td>
+    <td class="num">${s.keysCount}/${ND()}</td><td class="num">${s.mini}/${ND()}</td>
     <td><span class="pill ${s.final?'ok':'no'}">${s.final?'Completado':'Pendiente'}</span></td>
     <td class="num">${s.percent}%<div class="bar"><i style="width:${s.percent}%"></i></div></td>
     <td>${relTime(s.lastSeen)}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">Todavía no hay estudiantes con estos filtros. Cuando ingresen al juego aparecerán aquí.</td></tr>';
@@ -239,27 +268,29 @@ function render(){
 }
 async function openStudent(email){
   const s=data.students.find(x=>x.email===email);if(!s)return;
-  $('dName').textContent=s.firstName+' '+s.lastName;$('dMeta').textContent=`${s.email} · ${s.career||'MAE'} · ${s.section||'Sin sección'}${s.teacher?' · '+s.teacher:''} · ${s.logins} ingreso${s.logins===1?'':'s'}`;
-  $('dBody').innerHTML=`<div><h2 style="font-size:18px">Puertas</h2><div class="doorlist">${DOORS.map((d,i)=>`<div class="doorline"><span>Puerta ${i+1} · ${d}</span><span class="pill ${s.rooms[i]?'ok':'no'}" style="${!s.rooms[i]&&s.keys[i]?'background:var(--key-bg);color:var(--key)':''}">${s.rooms[i]?'Refuerzo abierto':s.keys[i]?'Llave obtenida':'Bloqueada'}</span></div>`).join('')}</div></div>
-    <div class="num" style="color:var(--muted)">Refuerzos revisados: <b style="color:var(--ink)">${s.reviewed}/5</b> · Minijuegos: <b style="color:var(--ink)">${s.mini}/5</b> · XP: <b style="color:var(--ink)">${s.xp}</b> · Nivel ${s.level}<br>Sala actual: <b style="color:var(--ink)">${esc(s.current)}</b><br>Primer ingreso: ${s.firstSeen?new Date(s.firstSeen).toLocaleString('es-PE'):'—'}</div>
+  $('dName').textContent=s.firstName+' '+s.lastName;$('dMeta').textContent=`${s.email} · ${s.career||'—'} · ${s.section||'Sin sección'}${s.teacher?' · '+s.teacher:''} · ${s.logins} ingreso${s.logins===1?'':'s'}`;
+  $('dBody').innerHTML=`<div><h2 style="font-size:18px">Puertas</h2><div class="doorlist">${DOORS().map((d,i)=>`<div class="doorline"><span>Puerta ${i+1} · ${d}</span><span class="pill ${s.rooms[i]?'ok':'no'}" style="${!s.rooms[i]&&s.keys[i]?'background:var(--key-bg);color:var(--key)':''}">${s.rooms[i]?'Refuerzo abierto':s.keys[i]?'Llave obtenida':'Bloqueada'}</span></div>`).join('')}</div></div>
+    <div class="num" style="color:var(--muted)">Refuerzos revisados: <b style="color:var(--ink)">${s.reviewed}/${ND()}</b> · Minijuegos: <b style="color:var(--ink)">${s.mini}/${ND()}</b> · XP: <b style="color:var(--ink)">${s.xp}</b> · Nivel ${s.level}<br>Sala actual: <b style="color:var(--ink)">${esc(s.current)}</b><br>Primer ingreso: ${s.firstSeen?new Date(s.firstSeen).toLocaleString('es-PE'):'—'}</div>
     <div><h2 style="font-size:18px">Actividad reciente</h2><div class="timeline" id="tl"><p class="sync">Cargando actividad…</p></div></div>`;
   $('drawer').classList.remove('hidden');$('drawerBack').classList.remove('hidden');$('dClose').focus();
   try{const r=await api({action:'studentActivity',email});$('tl').innerHTML=r.events.length?r.events.map(e=>`<div class="ev"><b>${esc(e.title)}</b><small>${esc(e.time||new Date(e.at).toLocaleString('es-PE'))}</small>${e.detail?`<p>${esc(e.detail)}</p>`:''}</div>`).join(''):'<p class="sync">Sin actividad registrada todavía.</p>'}
   catch(e){$('tl').innerHTML=`<p class="err">No se pudo cargar la actividad: ${esc(e.message)}</p>`}
 }
 function closeDrawer(){$('drawer').classList.add('hidden');$('drawerBack').classList.add('hidden')}
-function exportCsv(){if(!data)return;const head=['Apellidos','Nombres','Correo','Carrera','Docente','Sección',...DOORS.map((d,i)=>`Puerta ${i+1} ${d}`),'Llaves','Minijuegos','Refuerzos revisados','Portal final','Avance %','XP','Ingresos','Última actividad'];
-  const rows=filtered().map(s=>[s.lastName,s.firstName,s.email,s.career,s.teacher,s.section,...DOORS.map((d,i)=>s.rooms[i]?'Refuerzo abierto':s.keys[i]?'Llave obtenida':'Bloqueada'),s.keysCount,s.mini,s.reviewed,s.final?'Completado':'Pendiente',s.percent,s.xp,s.logins,s.lastSeen?new Date(s.lastSeen).toLocaleString('es-PE'):'']);
+function exportCsv(){if(!data)return;const head=['Apellidos','Nombres','Correo','Carrera','Docente','Sección',...DOORS().map((d,i)=>`Puerta ${i+1} ${d}`),'Llaves','Minijuegos','Refuerzos revisados','Misión final','Avance %','XP','Ingresos','Última actividad'];
+  const rows=filtered().map(s=>[s.lastName,s.firstName,s.email,s.career,s.teacher,s.section,...DOORS().map((d,i)=>s.rooms[i]?'Refuerzo abierto':s.keys[i]?'Llave obtenida':'Bloqueada'),s.keysCount,s.mini,s.reviewed,s.final?'Completado':'Pendiente',s.percent,s.xp,s.logins,s.lastSeen?new Date(s.lastSeen).toLocaleString('es-PE'):'']);
   const csv=[head,...rows].map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));a.download='Mision_SISE_avance_'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));a.download='Mision_SISE_'+course.id+'_avance_'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
 
-$('loginForm').addEventListener('submit',e=>{e.preventDefault();$('loginErr').textContent='';keySet($('keyInput').value.trim());load()});
+$('loginForm').addEventListener('submit',e=>{e.preventDefault();$('loginErr').textContent='';keySet($('keyInput').value.trim());load(true)});
+$('courseTabs').addEventListener('click',e=>{const b=e.target.closest('button[data-c]');if(!b||b.dataset.c===course.id)return;course=COURSES.find(c=>c.id===b.dataset.c);ss('ms_course',course.id);
+  data=null;closeDrawer();['teaFilter','secFilter','stateFilter'].forEach(id=>$(id).value='');$('searchInput').value='';$('rows').innerHTML='<tr><td colspan="8" class="empty">Cargando…</td></tr>';load()});
 $('refreshBtn').onclick=load;$('exportBtn').onclick=exportCsv;
-$('logoutBtn').onclick=()=>{keySet('');data=null;$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('keyInput').value=''};
+$('logoutBtn').onclick=()=>{keySet('');ss('ms_courses','');ss('ms_course','');myCourses=[];course=null;data=null;$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('keyInput').value=''};
 $('teaFilter').addEventListener('change',()=>{$('secFilter').value='';fillSections();render()});['secFilter','stateFilter'].forEach(id=>$(id).addEventListener('change',render));$('searchInput').addEventListener('input',render);
 $('rows').addEventListener('click',e=>{const tr=e.target.closest('tr[data-email]');if(tr)openStudent(tr.dataset.email)});
 $('dClose').onclick=closeDrawer;$('drawerBack').onclick=closeDrawer;document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
-if(keyGet())load();
+if(keyGet()){myCourses=(ss('ms_courses')||'').split(',').filter(Boolean);course=COURSES.find(c=>c.id===ss('ms_course')&&myCourses.includes(c.id))||null;load(!course)}
 </script>
 </body>
 </html>
