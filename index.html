@@ -770,12 +770,7 @@ tbody tr:hover td{
     </h2>
 
     <p class="sub">
-      Cada puerta pasa de
-      <b>bloqueada</b>
-      a
-      <b>llave obtenida</b>
-      y luego a
-      <b>refuerzo abierto</b>.
+      Cada puerta muestra el estado actual del estudiante: <b>bloqueada</b>, <b>llave obtenida</b> o <b>refuerzo abierto</b>.
 
       <span
         class="sync"
@@ -892,9 +887,7 @@ tbody tr:hover td{
           Misión final completada
         </option>
 
-        <option value="idle">
-          Sin actividad en 7 días
-        </option>
+        
 
       </select>
 
@@ -931,7 +924,7 @@ tbody tr:hover td{
           <th>Minijuegos</th>
           <th>Misión final</th>
           <th>Avance</th>
-          <th>Última actividad</th>
+          
         </tr>
 
       </thead>
@@ -939,7 +932,7 @@ tbody tr:hover td{
       <tbody id="rows">
 
         <tr>
-          <td colspan="8" class="empty">
+          <td colspan="7" class="empty">
             Cargando…
           </td>
         </tr>
@@ -1586,14 +1579,6 @@ function filtered(){
             &&
             s.final
           )
-
-          ||
-
-          (
-            st==='idle'
-            &&
-            daysSince(s.lastSeen)>7
-          )
         )
 
     )
@@ -1908,10 +1893,6 @@ function render(){
 
             </td>
 
-            <td>
-              ${relTime(s.lastSeen)}
-            </td>
-
           </tr>
 
         `;
@@ -1926,7 +1907,7 @@ function render(){
       <tr>
 
         <td
-          colspan="8"
+          colspan="7"
           class="empty"
         >
           Todavía no hay estudiantes con estos filtros.
@@ -2160,7 +2141,6 @@ function exportCsv(){
     'Avance %',
     'XP',
     'Ingresos',
-    'Última actividad'
 
   ];
 
@@ -2207,18 +2187,7 @@ function exportCsv(){
 
         s.percent,
         s.xp,
-        s.logins,
-
-        s.lastSeen
-          ?new Date(
-            s.lastSeen
-          )
-          .toLocaleString(
-            'es-PE'
-          )
-          :''
-
-      ]
+        s.logins]
 
     );
 
@@ -2379,7 +2348,7 @@ $('courseTabs')
       `
         <tr>
           <td
-            colspan="8"
+            colspan="7"
             class="empty"
           >
             Cargando…
